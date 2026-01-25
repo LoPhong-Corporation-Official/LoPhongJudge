@@ -1,6 +1,8 @@
 const router = require('express').Router();
+const upload = require('../utils/upload.util');
 const controller = require('../controllers/submit.controller');
 
-router.post('/', controller.submit);
+// field name = image
+router.post('/', upload.single('image'), controller.submit);
 
 module.exports = router;

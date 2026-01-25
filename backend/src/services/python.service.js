@@ -3,7 +3,6 @@ const path = require('path');
 
 exports.run = (script, payload) => {
     return new Promise((resolve, reject) => {
-
         const py = spawn('python', [
             path.join(__dirname, `../../ai/${script}`)
         ]);
