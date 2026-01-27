@@ -29,7 +29,15 @@ def read_answers_auto(image_path):
 
         for i, choice in enumerate(CHOICES):
             x = i * col_w
-            cell = answer_region[y:y+row_h, x:x+col_w]
+            pad_y = int(row_h * 0.30)
+            pad_x = int(col_w * 0.30)
+
+            cell = answer_region[
+            y + pad_y : y + row_h - pad_y,
+            x + pad_x : x + col_w - pad_x
+            ]
+          
+
 
             if cell.size == 0:
                 continue

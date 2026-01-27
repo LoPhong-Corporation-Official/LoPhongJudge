@@ -1,34 +1,85 @@
-import cv2
-from layout import *
+# omr.py
+# OMR core – chỉ xử lý 1 ô trắc nghiệm
+# Phù hợp phiếu tròn, tô bút bi/bút chì
 
-def is_filled(cell_img, threshold=0.5):
+import cv2
+import numpy as np
+
+
+def preprocess_cell(cell_img):
     """
-    Kiểm tra ô có được tô hay không
+    Tiền xử lý ảnh ô:
+    - Grayscale
+    - Blur nhẹ
+    - Threshold đảo (tô = trắng)
     """
     gray = cv2.cvtColor(cell_img, cv2.COLOR_BGR2GRAY)
-    _, th = cv2.threshold(gray, 0, 255,
-                          cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
 
-    filled_ratio = cv2.countNonZero(th) / (cell_img.size / 3)
-    return filled_ratio > threshold
+    # Blur nhẹ để gom nét tô
+    blur = cv2.GaussianBlur(gray, (3, 3), 0)
+
+    # Nhị phân hóa
+    _, thresh = cv2.threshold(
+        blur, 0, 255,
+        cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU
+    )
+
+    return thresh
 
 
-def read_answers(image_path):
-    img = cv2.imread(image_path)
-    answers = {}
+def compute_filled_ratio(thresh_img):
+    """
+    Tính tỷ lệ pixel được tô
+    """
+    filled = cv2.countNonZero(thresh_img)
+    total = thresh_img.shape[0] * thresh_img.shape[1]
+    return filled / total
 
-    for q in range(NUM_QUESTIONS):
-        y = ANSWER_START_Y + q * ROW_HEIGHT
 
-        for i, choice in enumerate(CHOICES):
-            x = ANSWER_START_X + i * COL_WIDTH
+def crop_inner_circle(cell_img, crop_ratio=0.30):
+    """
+    Cắt bỏ viền, chỉ giữ phần TRONG hình tròn
+    """
+    h, w = cell_img.shape[:2]
 
-            cell = img[y:y+40, x:x+40]  # cắt ô
-            if is_filled(cell):
-                answers[str(q + 1)] = choice
+    pad_y = int(h * crop_ratio)
+    pad_x = int(w * crop_ratio)
 
-    return answers
-# Ví dụ sử dụng
-# answers = read_answers("path_to_answer_sheet_image.jpg")
-# print(answers)
-# Trả về dict {số câu: đáp án}
+    inner = cell_img[
+        pad_y : h - pad_y,
+        pad_x : w - pad_x
+    ]
+
+    return inner
+
+
+def is_filled(cell_img, threshold=0.075, debug=False):
+    """
+    Xác định ô có được tô hay không
+
+    threshold khuyến nghị:
+    - 0.08 : tô rất nhạt
+    - 0.10 : CHUẨN THI
+    - 0.15 : tô rất đậm
+    """
+
+    # Ô lỗi
+    if cell_img is None or cell_img.size == 0:
+        return False
+
+    # 1. Cắt trong hình tròn (QUAN TRỌNG NHẤT)
+    cell_inner = crop_inner_circle(cell_img, crop_ratio=0.30)
+
+    # 2. Threshold
+    thresh = preprocess_cell(cell_inner)
+
+    # 3. Tính ratio
+    ratio = compute_filled_ratio(thresh)
+
+    if debug:
+        print(f"Filled ratio = {ratio:.3f}")
+        cv2.imwrite("debug_cell_inner.png", cell_inner)
+        cv2.imwrite("debug_thresh.png", thresh)
+
+    return ratio >= threshold
+# --- IGNORE ---
