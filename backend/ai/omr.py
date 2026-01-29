@@ -1,85 +1,53 @@
 # omr.py
-# OMR core – chỉ xử lý 1 ô trắc nghiệm
-# Phù hợp phiếu tròn, tô bút bi/bút chì
+# Core OMR engine – dùng cho đáp án, SBD, mã đề
 
 import cv2
 import numpy as np
 
 
-def preprocess_cell(cell_img):
+def preprocess_cell(cell):
     """
-    Tiền xử lý ảnh ô:
-    - Grayscale
-    - Blur nhẹ
-    - Threshold đảo (tô = trắng)
+    Chuẩn hóa 1 ô trắc nghiệm
     """
-    gray = cv2.cvtColor(cell_img, cv2.COLOR_BGR2GRAY)
+    gray = cv2.cvtColor(cell, cv2.COLOR_BGR2GRAY)
+    blur = cv2.GaussianBlur(gray, (5, 5), 0)
 
-    # Blur nhẹ để gom nét tô
-    blur = cv2.GaussianBlur(gray, (3, 3), 0)
-
-    # Nhị phân hóa
-    _, thresh = cv2.threshold(
+    thresh = cv2.threshold(
         blur, 0, 255,
         cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU
-    )
+    )[1]
 
     return thresh
 
 
-def compute_filled_ratio(thresh_img):
+def filled_ratio(thresh):
     """
-    Tính tỷ lệ pixel được tô
+    Tỉ lệ pixel đen
     """
-    filled = cv2.countNonZero(thresh_img)
-    total = thresh_img.shape[0] * thresh_img.shape[1]
-    return filled / total
+    return cv2.countNonZero(thresh) / thresh.size
 
 
-def crop_inner_circle(cell_img, crop_ratio=0.30):
+def read_row(cells):
     """
-    Cắt bỏ viền, chỉ giữ phần TRONG hình tròn
-    """
-    h, w = cell_img.shape[:2]
-
-    pad_y = int(h * crop_ratio)
-    pad_x = int(w * crop_ratio)
-
-    inner = cell_img[
-        pad_y : h - pad_y,
-        pad_x : w - pad_x
-    ]
-
-    return inner
-
-
-def is_filled(cell_img, threshold=0.075, debug=False):
-    """
-    Xác định ô có được tô hay không
-
-    threshold khuyến nghị:
-    - 0.08 : tô rất nhạt
-    - 0.10 : CHUẨN THI
-    - 0.15 : tô rất đậm
+    Đọc 1 hàng đáp án A B C D
+    cells: list ảnh [A, B, C, D]
     """
 
-    # Ô lỗi
-    if cell_img is None or cell_img.size == 0:
-        return False
+    scores = [filled_ratio(preprocess_cell(c)) for c in cells]
 
-    # 1. Cắt trong hình tròn (QUAN TRỌNG NHẤT)
-    cell_inner = crop_inner_circle(cell_img, crop_ratio=0.30)
+    max_score = max(scores)
+    second_score = sorted(scores)[-2]
 
-    # 2. Threshold
-    thresh = preprocess_cell(cell_inner)
+    # DEBUG khi cần
+    # print(scores)
 
-    # 3. Tính ratio
-    ratio = compute_filled_ratio(thresh)
+    # Không tô
+    if max_score < 0.15:
+        return "BLANK"
 
-    if debug:
-        print(f"Filled ratio = {ratio:.3f}")
-        cv2.imwrite("debug_cell_inner.png", cell_inner)
-        cv2.imwrite("debug_thresh.png", thresh)
+    # Tô nhiều hơn 1 ô
+    if second_score > 0.12:
+        return "INVALID"
 
-    return ratio >= threshold
-# --- IGNORE ---
+    return "ABCD"[scores.index(max_score)]
+# Fixed indentation issues
