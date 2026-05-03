@@ -1,0 +1,4 @@
+This project is the backend on computer. To use this, you can connect your phone with your computer by WiFi or cable. 
+1. WiFi : Project backend might be uploaded on Render
+2. Cable : Install backend 
+ 

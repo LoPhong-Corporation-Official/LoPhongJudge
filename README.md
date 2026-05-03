@@ -1,7 +1,8 @@
 <h1 align="center">Hi 👋, I'm LoPhong</h1>
 <h3 align="center">This is a project that I made for Vietnamese Teachers</h3>
 
-<h3 align="left">Connect with me:</h3>
+<h3 align="left">Support me complete this project at: phongdd1206@gmail.com</h3>
+<h3 align="center">Thank you so much!❤️❤️</h3>
 <p align="left">
 </p>
 
